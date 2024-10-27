@@ -46,17 +46,77 @@ services:
       - "27018:27017"
 
   spark:
-    image: bitnami/spark
+    image: bitnami/spark:3.3.1
+    hostname: spark
     ports:
       - "8080:8080"
       - "7077:7077"
+    environment:
+      - SPARK_MODE=master
+      - PYSPARK_PYTHON=/usr/bin/python3.11
+      - PYSPARK_DRIVER_PYTHON=/usr/bin/python3.11
+      - SPARK_DRIVER_MEMORY=3g
+      - SPARK_WORKER_MEMORY=3g
+      - SPARK_RPC_MESSAGE_MAX_SIZE=2047
+      - SPARK_SERIALIZER=org.apache.spark.serializer.KryoSerializer
+      - SPARK_KRYOSERIALIZER_BUFFER_MAX=512m
+    networks:
+      - spark_network
+    command: /opt/bitnami/scripts/spark/run.sh
+
+  spark-worker-1:
+    image: bitnami/spark:3.3.1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - PYSPARK_PYTHON=/usr/bin/python3.11
+      - PYSPARK_DRIVER_PYTHON=/usr/bin/python3.11
+      - SPARK_DRIVER_MEMORY=3g
+      - SPARK_WORKER_MEMORY=3g
+      - SPARK_RPC_MESSAGE_MAX_SIZE=2047
+      - SPARK_SERIALIZER=org.apache.spark.serializer.KryoSerializer
+      - SPARK_KRYOSERIALIZER_BUFFER_MAX=512m
+    depends_on:
+      - spark
+    ports:
+      - "8081:8081"
+    command: /opt/bitnami/scripts/spark/run.sh
+    networks:
+      - spark_network
+
+  spark-worker-2:
+    image: bitnami/spark:3.3.1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - PYSPARK_PYTHON=/usr/bin/python3.11
+      - PYSPARK_DRIVER_PYTHON=/usr/bin/python3.11
+      - SPARK_DRIVER_MEMORY=3g
+      - SPARK_WORKER_MEMORY=3g
+      - SPARK_RPC_MESSAGE_MAX_SIZE=2047
+      - SPARK_SERIALIZER=org.apache.spark.serializer.KryoSerializer
+      - SPARK_KRYOSERIALIZER_BUFFER_MAX=512m
+    depends_on:
+      - spark
+    ports:
+      - "8082:8081"
+    command: /opt/bitnami/scripts/spark/run.sh
+    networks:
+      - spark_network
 
   jupyter:
     image: jupyter/base-notebook
+    user: root
     ports:
       - "8888:8888"
     environment:
       JUPYTER_ENABLE_LAB: "yes"
+    volumes:
+      - ./jupyter_notebooks:/home/jovyan/work
+    command: >
+      bash -c "apt-get update && mkdir -p /var/lib/apt/lists && apt-get install -y --no-install-recommends default-jdk python3.11 && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && start.sh jupyter lab"
+    networks:
+      - spark_network
 
   metabase:
     image: metabase/metabase
@@ -69,12 +129,20 @@ services:
       - "8085:8080"
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW_UID: 50000
     volumes:
       - ./dags:/usr/local/airflow/dags
-    command: bash -c "airflow db init && airflow webserver"
+    command: bash -c "airflow db init && airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin && airflow webserver"
     depends_on:
       - postgres
+    networks:
+      - spark_network
+
+networks:
+  spark_network:
+    driver: bridge
 
 volumes:
   minio_data:
   postgres_data:
+  jupyter_notebooks:
