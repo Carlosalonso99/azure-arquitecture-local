@@ -28,8 +28,8 @@ Antes de comenzar, asegúrate de tener instalados:
    Clona este repositorio en tu máquina local:
 
    ```sh
-   git clone <url-del-repositorio>
-   cd <nombre-del-directorio>
+   git clone https://github.com/Carlosalonso99/azure-arquitecture-local.git
+   cd azure-arquitecture-local
    ```
 
 2. **Crear el Directorio de DAGs para Airflow**
